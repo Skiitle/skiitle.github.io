@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>凸规划判断训练器</title>
+    <!-- KaTeX数学公式库 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- 烟花效果 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 35px;
+            position: relative;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 2.4rem;
+            margin-bottom: 10px;
+        }
+        
+        .score-container {
+            position: absolute;
+            top: 35px;
+            right: 35px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            font-size: 1.1rem;
+        }
+        
+        /* 顶部控制按钮 */
+        .controls-top {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        
+        /* 问题展示区域 */
+        .problem-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .problem-title {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .problem-title h2 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            text-align: center;
+        }
+        
+        .problem-content {
+            font-size: 1.15rem;
+        }
+        
+        .math-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .math-display {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .math-line {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            min-height: 45px;
+        }
+        
+        .constraint-label {
+            min-width: 180px;
+            font-weight: bold;
+            text-align: right;
+            margin-right: 20px;
+            font-size: 1.15rem;
+            color: #2c3e50;
+        }
+        
+        .constraint-content {
+            flex: 1;
+            text-align: left;
+            font-size: 1.3rem;
+            font-family: 'KaTeX_Main', 'Times New Roman', serif;
+        }
+        
+        /* 答题区域 */
+        .quiz-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .quiz-item {
+            margin-bottom: 25px;
+            padding: 22px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            border-left: 5px solid #3498db;
+            transition: all 0.3s ease;
+        }
+        
+        .quiz-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.1);
+        }
+        
+        .quiz-question {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            line-height: 1.5;
+        }
+        
+        .options-container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .option-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 15px 28px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            transition: all 0.2s;
+            flex: 1;
+            font-size: 1.1rem;
+        }
+        
+        .option-label:hover {
+            background: #f0f7ff;
+            border-color: #3498db;
+        }
+        
+        .option-label.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+            box-shadow: 0 3px 10px rgba(52, 152, 219, 0.2);
+        }
+        
+        .option-label.correct {
+            border-color: #2ecc71;
+            background: #d4edda;
+        }
+        
+        .option-label.incorrect {
+            border-color: #e74c3c;
+            background: #f8d7da;
+        }
+        
+        .option-input {
+            margin-right: 15px;
+            transform: scale(1.4);
+            cursor: pointer;
+        }
+        
+        .feedback {
+            margin-top: 15px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+            animation: slideIn 0.3s ease;
+            font-size: 1.1rem;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .feedback.correct {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border: 1px solid #b1dfbb;
+        }
+        
+        .feedback.incorrect {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border: 1px solid #f1b0b7;
+        }
+        
+        /* 结果展示区域 */
+        .result-section {
+            text-align: center;
+            padding: 35px;
+            margin: 30px 0;
+            border-radius: 15px;
+            display: none;
+            animation: fadeIn 0.5s ease;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 3px solid;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-correct {
+            border-color: #2ecc71;
+            box-shadow: 0 10px 30px rgba(46, 204, 113, 0.2);
+        }
+        
+        .result-incorrect {
+            border-color: #e74c3c;
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.2);
+        }
+        
+        .result-title {
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .result-correct .result-title {
+            color: #27ae60;
+        }
+        
+        .result-incorrect .result-title {
+            color: #e74c3c;
+        }
+        
+        .celebration {
+            font-size: 4.5rem;
+            margin: 25px 0;
+            animation: bounce 1s infinite alternate;
+        }
+        
+        @keyframes bounce {
+            from { transform: translateY(0) scale(1); }
+            to { transform: translateY(-15px) scale(1.1); }
+        }
+        
+        .success-message {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 25px 0;
+            color: #e74c3c;
+            animation: colorShift 2s infinite;
+        }
+        
+        @keyframes colorShift {
+            0%, 100% { color: #e74c3c; }
+            50% { color: #3498db; }
+        }
+        
+        /* 底部控制按钮 */
+        .controls-bottom {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 16px 45px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            min-width: 220px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        
+        .btn-new {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .btn-check {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+        }
+        
+        .hint-section {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffd166;
+            border-radius: 10px;
+            padding: 22px;
+            margin-top: 25px;
+            font-size: 1.1rem;
+        }
+        
+        .hint-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .katex-inline {
+            font-size: 1.1em !important;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 1rem;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .score-container {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin: 0 auto 20px;
+                width: fit-content;
+                font-size: 1rem;
+                padding: 10px 20px;
+            }
+            
+            .controls-bottom {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 320px;
+                font-size: 1.1rem;
+                padding: 14px 30px;
+            }
+            
+            .options-container {
+                flex-direction: column;
+            }
+            
+            .option-label {
+                min-width: 100%;
+                font-size: 1rem;
+                padding: 12px 20px;
+            }
+            
+            .celebration {
+                font-size: 3.5rem;
+            }
+            
+            .success-message {
+                font-size: 1.6rem;
+            }
+            
+            .math-line {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .constraint-label {
+                margin-bottom: 8px;
+                text-align: left;
+                min-width: 100%;
+                font-size: 1.1rem;
+            }
+            
+            .constraint-content {
+                text-align: left;
+                font-size: 1.2rem;
+                width: 100%;
+            }
+            
+            .math-container {
+                padding: 20px;
+            }
+            
+            .quiz-question {
+                font-size: 1.2rem;
+            }
+        }
+        
+        /* 数学公式特殊样式 */
+        .katex {
+            font-size: 1.25em !important;
+            font-family: 'KaTeX_Main', 'Times New Roman', serif !important;
+        }
+        
+        .katex-display {
+            margin: 0.5em 0 !important;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        
+        /* 特别强调数学公式 */
+        .math-formula {
+            font-size: 1.3rem;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="score-container">
+            得分: <span id="score">0</span>
+        </div>
+        
+        <header>
+            <h1>🎯 凸规划判断训练器</h1>
+            <p style="color: #7f8c8d; font-size: 1.2rem;">随机生成优化问题，判断是否为凸规划</p>
+        </header>
+        
+        <!-- 顶部按钮：生成新问题 -->
+        <div class="controls-top">
+            <button class="btn btn-new" id="newProblemBtn">
+                <span style="font-size: 1.3rem;">🔄</span> 生成新规划问题
+            </button>
+        </div>
+        
+        <!-- 问题展示区域 -->
+        <section class="problem-section">
+            <div class="problem-title">
+                <h2>优化问题 #<span id="problemNumber">1</span></h2>
+            </div>
+            
+            <div class="problem-content">
+                <div class="math-container">
+                    <div class="math-display" id="mathDisplay">
+                        <!-- 数学公式将在这里动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="hint-section">
+                    <div class="hint-title">
+                        <span>💡 凸规划判断标准</span>
+                    </div>
+                    <div id="hintContent">
+                        <p>1. 目标函数 \( f(\mathbf{x}) \) 必须是<strong>凸函数</strong></p>
+                        <p>2. 不等式约束 \( g_i(\mathbf{x}) \leq 0 \) 必须是<strong>凸函数</strong></p>
+                        <p>3. 不等式约束 \( g_i(\mathbf{x}) \geq 0 \) 必须是<strong>凹函数</strong></p>
+                        <p>4. 等式约束 \( h_j(\mathbf{x}) = 0 \) 必须是<strong>仿射函数（线性）</strong></p>
+                        <p style="margin-top: 10px; color: #5a6268; font-size: 1rem;">
+                            <strong>注：</strong>线性函数既是凸函数也是凹函数，但不等式方向决定需要凸还是凹！
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 答题区域 -->
+        <section class="quiz-section">
+            <div class="quiz-item" id="quiz1">
+                <div class="quiz-question" id="q1Text">1. 目标函数 \( f(\mathbf{x}) \) 是否是凸函数？</div>
+                <div class="options-container">
+                    <label class="option-label">
+                        <input type="radio" name="q1" value="yes" class="option-input">
+                        <span>是，目标函数是凸函数</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q1" value="no" class="option-input">
+                        <span>否，目标函数不是凸函数</span>
+                    </label>
+                </div>
+                <div class="feedback" id="feedback1"></div>
+            </div>
+            
+            <div class="quiz-item" id="quiz2">
+                <div class="quiz-question">2. 每个不等式约束函数是否满足凸性/凹性要求？</div>
+                <div class="options-container">
+                    <label class="option-label">
+                        <input type="radio" name="q2" value="yes" class="option-input">
+                        <span>是，所有不等式约束都满足</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q2" value="no" class="option-input">
+                        <span>否，至少有一个不满足</span>
+                    </label>
+                </div>
+                <div class="feedback" id="feedback2"></div>
+            </div>
+            
+            <div class="quiz-item" id="quiz3">
+                <div class="quiz-question">3. 每个等式约束是否是线性（仿射）函数？</div>
+                <div class="options-container">
+                    <label class="option-label">
+                        <input type="radio" name="q3" value="yes" class="option-input">
+                        <span>是，所有等式约束都是线性的</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q3" value="no" class="option-input">
+                        <span>否，至少有一个不是线性的</span>
+                    </label>
+                </div>
+                <div class="feedback" id="feedback3"></div>
+            </div>
+            
+            <div class="quiz-item" id="quiz4">
+                <div class="quiz-question">4. 这个优化问题是否是凸规划？</div>
+                <div class="options-container">
+                    <label class="option-label">
+                        <input type="radio" name="q4" value="yes" class="option-input">
+                        <span>是，这是一个凸规划问题</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q4" value="no" class="option-input">
+                        <span>否，这不是一个凸规划问题</span>
+                    </label>
+                </div>
+                <div class="feedback" id="feedback4"></div>
+            </div>
+        </section>
+        
+        <!-- 结果展示区域 -->
+        <div class="result-section" id="resultSection">
+            <div class="result-title" id="resultTitle"></div>
+            <div class="success-message" id="successMessage" style="display: none;"></div>
+            <div class="celebration" id="celebration" style="display: none;"></div>
+            <div id="resultDetails"></div>
+            <div id="autoNext" style="margin-top: 20px; font-size: 1.2rem; color: #3498db; font-weight: bold;"></div>
+        </div>
+        
+        <!-- 底部控制按钮 -->
+        <div class="controls-bottom">
+            <button class="btn btn-check" id="checkBtn">
+                <span style="font-size: 1.3rem;">✅</span> 检查答案
+            </button>
+        </div>
+        
+        <footer>
+            <p>凸规划判断训练器 | 数学公式使用KaTeX渲染 | 每次答对得10分</p>
+            <p>快捷键: Enter检查答案 | N下一题</p>
+        </footer>
+    </div>
+
+    <script>
+        // 凸规划游戏类
+        class ConvexOptimizationGame {
+            constructor() {
+                this.currentProblem = null;
+                this.problemNumber = 1;
+                this.score = 0;
+                this.answered = false;
+                this.init();
+            }
+            
+            init() {
+                this.generateProblem();
+                this.renderAllMath();
+                this.setupEventListeners();
+            }
+            
+            // 生成随机问题
+            generateProblem() {
+                // 1-3个变量，使用x₁, x₂, x₃
+                const numVars = Math.floor(Math.random() * 3) + 1;
+                
+                // 70%概率生成凸规划
+                const isConvex = Math.random() < 0.7;
+                
+                // 生成目标函数
+                const objective = this.generateObjective(numVars, isConvex);
+                
+                // 生成约束条件（总共1-4个，且至少有一个等式约束）
+                const totalConstraints = Math.floor(Math.random() * 4) + 1;
+                
+                // 确保至少有一个等式约束
+                const minEquality = 1;
+                const maxEquality = Math.min(2, totalConstraints);
+                const numEquality = Math.floor(Math.random() * (maxEquality - minEquality + 1)) + minEquality;
+                const numInequality = totalConstraints - numEquality;
+                
+                const constraints = [];
+                const constraintsInfo = {
+                    inequalities: [],
+                    equalities: [],
+                    isConvexInequalities: true,
+                    isLinearEqualities: true,
+                    nonConvexInequalities: [], // 记录不满足要求的约束
+                    nonLinearEqualities: []    // 记录非线性等式约束
+                };
+                
+                // 生成不等式约束
+                for (let i = 0; i < numInequality; i++) {
+                    const isConvexConstraint = isConvex ? true : Math.random() < 0.5;
+                    const constraint = this.generateConstraint(numVars, 'inequality', isConvexConstraint);
+                    
+                    constraints.push(constraint);
+                    constraintsInfo.inequalities.push({
+                        index: i + 1,
+                        func: constraint.func,
+                        isConvex: constraint.isConvex,
+                        comparator: constraint.comparator,
+                        isLinear: constraint.isLinear
+                    });
+                    
+                    if (!constraint.isConvex) {
+                        constraintsInfo.isConvexInequalities = false;
+                        constraintsInfo.nonConvexInequalities.push(i + 1);
+                    }
+                }
+                
+                // 生成等式约束
+                for (let i = 0; i < numEquality; i++) {
+                    const isLinear = isConvex ? true : Math.random() < 0.5;
+                    const constraint = this.generateConstraint(numVars, 'equality', isLinear);
+                    
+                    constraints.push(constraint);
+                    constraintsInfo.equalities.push({
+                        index: i + 1,
+                        func: constraint.func,
+                        isLinear: constraint.isLinear
+                    });
+                    
+                    if (!constraint.isLinear) {
+                        constraintsInfo.isLinearEqualities = false;
+                        constraintsInfo.nonLinearEqualities.push(i + 1);
+                    }
+                }
+                
+                this.currentProblem = {
+                    id: this.problemNumber,
+                    numVars: numVars,
+                    objective: objective,
+                    constraints: constraints,
+                    constraintsInfo: constraintsInfo,
+                    isConvex: isConvex && constraintsInfo.isConvexInequalities && constraintsInfo.isLinearEqualities
+                };
+            }
+            
+            // 生成目标函数
+            generateObjective(numVars, isConvex) {
+                const funcTypes = [
+                    { type: 'quadratic', convex: true, generate: (n) => this.generateQuadratic(n, true) },
+                    { type: 'exponential', convex: true, generate: (n) => this.generateExponential(n) },
+                    { type: 'logarithmic', convex: false, generate: (n) => this.generateLogarithmic(n) },
+                    { type: 'trigonometric', convex: false, generate: (n) => this.generateTrigonometric(n) },
+                    { type: 'linear', convex: true, generate: (n) => this.generateLinear(n) },
+                    { type: 'cubic', convex: false, generate: (n) => this.generateCubic(n) },
+                    { type: 'product', convex: false, generate: (n) => this.generateProduct(n) }
+                ];
+                
+                // 根据是否为凸规划选择合适的函数类型
+                let availableTypes;
+                if (isConvex) {
+                    availableTypes = funcTypes.filter(t => t.convex);
+                } else {
+                    // 非凸规划时，有70%概率使用非凸函数
+                    availableTypes = Math.random() < 0.7 ? 
+                        funcTypes.filter(t => !t.convex) : 
+                        funcTypes;
+                }
+                
+                const selectedType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                const func = selectedType.generate(numVars);
+                
+                return {
+                    func: func,
+                    isConvex: selectedType.convex,
+                    type: selectedType.type
+                };
+            }
+            
+            // 生成约束函数
+            generateConstraint(numVars, constraintType, desiredProperty) {
+                let func, isConvex, isLinear;
+                
+                if (constraintType === 'equality') {
+                    // 等式约束
+                    if (desiredProperty) {
+                        // 线性函数（仿射）
+                        func = this.generateLinear(numVars);
+                        isLinear = true;
+                        isConvex = true; // 线性函数既是凸也是凹
+                    } else {
+                        // 非线性函数
+                        const types = [
+                            () => this.generateQuadratic(numVars, false),
+                            () => this.generateExponential(numVars),
+                            () => `\\sin(${this.getRandomVar(numVars)})`,
+                            () => `\\cos(${this.getRandomVar(numVars)})`,
+                            () => `e^{${this.getRandomVar(numVars)}}`,
+                            () => this.generateProduct(numVars)
+                        ];
+                        func = types[Math.floor(Math.random() * types.length)]();
+                        isLinear = false;
+                        isConvex = Math.random() > 0.5;
+                    }
+                } else {
+                    // 不等式约束
+                    if (desiredProperty) {
+                        // 需要满足凸性/凹性要求
+                        const convexFuncs = [
+                            () => this.generateQuadratic(numVars, true),
+                            () => this.generateExponential(numVars),
+                            () => this.generateLinear(numVars)
+                        ];
+                        func = convexFuncs[Math.floor(Math.random() * convexFuncs.length)]();
+                        isConvex = true;
+                        isLinear = func === this.generateLinear(numVars);
+                    } else {
+                        // 不满足要求的函数
+                        const nonConvexFuncs = [
+                            () => this.generateQuadratic(numVars, false),
+                            () => this.generateLogarithmic(numVars),
+                            () => this.generateTrigonometric(numVars),
+                            () => `${this.getRandomVar(numVars)}^3`,
+                            () => `-${this.generateQuadratic(numVars, true)}`,
+                            () => this.generateProduct(numVars)
+                        ];
+                        func = nonConvexFuncs[Math.floor(Math.random() * nonConvexFuncs.length)]();
+                        isConvex = false;
+                        isLinear = false;
+                    }
+                }
+                
+                // 选择比较符号
+                let comparator;
+                if (constraintType === 'inequality') {
+                    comparator = Math.random() > 0.5 ? '\\leq' : '\\geq';
+                    // 对于≥约束，凹函数才是正确的
+                    if (comparator === '\\geq') {
+                        // 线性函数既是凸也是凹，所以对于线性函数，≥约束是正确的
+                        if (!isLinear) {
+                            isConvex = !isConvex;
+                        }
+                    }
+                } else {
+                    comparator = '=';
+                }
+                
+                // 生成常数项
+                const constant = Math.floor(Math.random() * 10) - 3;
+                
+                return {
+                    func: func,
+                    comparator: comparator,
+                    constant: constant,
+                    type: constraintType,
+                    isConvex: isConvex,
+                    isLinear: isLinear
+                };
+            }
+            
+            // 生成二次型函数（优化显示：系数1省略）
+            generateQuadratic(numVars, positiveDefinite) {
+                const terms = [];
+                for (let i = 1; i <= numVars; i++) {
+                    const coeff = Math.floor(Math.random() * 4) + 1;
+                    const sign = positiveDefinite ? '' : (Math.random() > 0.5 ? '' : '-');
+                    
+                    // 系数为1时省略
+                    if (coeff === 1) {
+                        terms.push(`${sign}x_{${i}}^2`);
+                    } else {
+                        terms.push(`${sign}${coeff}x_{${i}}^2`);
+                    }
+                }
+                
+                // 添加交叉项（概率50%）
+                if (numVars > 1 && Math.random() > 0.5) {
+                    const i = Math.floor(Math.random() * numVars) + 1;
+                    let j = Math.floor(Math.random() * numVars) + 1;
+                    if (i === j) {
+                        j = (j % numVars) + 1; // 确保i不等于j
+                    }
+                    const crossCoeff = Math.floor(Math.random() * 3) + 1;
+                    // 系数为1时省略
+                    if (crossCoeff === 1) {
+                        terms.push(`x_{${i}}x_{${j}}`);
+                    } else {
+                        terms.push(`${crossCoeff}x_{${i}}x_{${j}}`);
+                    }
+                }
+                
+                return this.formatExpression(terms);
+            }
+            
+            // 生成乘积函数
+            generateProduct(numVars) {
+                if (numVars < 2) {
+                    return this.generateQuadratic(numVars, false);
+                }
+                
+                const vars = [];
+                for (let i = 1; i <= numVars; i++) {
+                    vars.push(`x_{${i}}`);
+                }
+                
+                // 随机选择2-3个变量相乘
+                const numFactors = Math.min(Math.floor(Math.random() * 2) + 2, numVars);
+                const selectedVars = [];
+                const usedIndices = new Set();
+                
+                while (selectedVars.length < numFactors) {
+                    const idx = Math.floor(Math.random() * numVars);
+                    if (!usedIndices.has(idx)) {
+                        selectedVars.push(vars[idx]);
+                        usedIndices.add(idx);
+                    }
+                }
+                
+                // 添加系数
+                const coeff = Math.floor(Math.random() * 4) + 1;
+                if (coeff === 1) {
+                    return selectedVars.join(' \\cdot ');
+                } else {
+                    return `${coeff} \\cdot ${selectedVars.join(' \\cdot ')}`;
+                }
+            }
+            
+            // 生成指数函数
+            generateExponential(numVars) {
+                const varIndex = Math.floor(Math.random() * numVars) + 1;
+                return `e^{x_{${varIndex}}}`;
+            }
+            
+            // 生成对数函数
+            generateLogarithmic(numVars) {
+                const varIndex = Math.floor(Math.random() * numVars) + 1;
+                return `\\log(x_{${varIndex}} + 1)`;
+            }
+            
+            // 生成三角函数
+            generateTrigonometric(numVars) {
+                const varIndex = Math.floor(Math.random() * numVars) + 1;
+                const funcs = ['\\sin', '\\cos'];
+                const selectedFunc = funcs[Math.floor(Math.random() * funcs.length)];
+                return `${selectedFunc}(x_{${varIndex}})`;
+            }
+            
+            // 生成线性函数（优化显示：系数1省略）
+            generateLinear(numVars) {
+                const terms = [];
+                for (let i = 1; i <= numVars; i++) {
+                    const coeff = Math.floor(Math.random() * 5) + 1;
+                    // 系数为1时省略
+                    if (coeff === 1) {
+                        terms.push(`x_{${i}}`);
+                    } else {
+                        terms.push(`${coeff}x_{${i}}`);
+                    }
+                }
+                // 添加常数项（概率50%）
+                if (Math.random() > 0.5) {
+                    const constant = Math.floor(Math.random() * 6) - 3;
+                    if (constant !== 0) {
+                        terms.push(constant > 0 ? `+ ${constant}` : `${constant}`);
+                    }
+                }
+                return this.formatExpression(terms);
+            }
+            
+            // 生成三次函数
+            generateCubic(numVars) {
+                const varIndex = Math.floor(Math.random() * numVars) + 1;
+                return `x_{${varIndex}}^3`;
+            }
+            
+            // 格式化表达式（处理符号）
+            formatExpression(terms) {
+                if (terms.length === 0) return '';
+                
+                // 处理第一项，确保没有前导加号
+                let result = terms[0];
+                
+                // 处理后续项
+                for (let i = 1; i < terms.length; i++) {
+                    const term = terms[i];
+                    // 如果项以加号或减号开头，直接添加
+                    if (term.startsWith('+') || term.startsWith('-')) {
+                        result += ' ' + term;
+                    } else {
+                        result += ' + ' + term;
+                    }
+                }
+                
+                // 清理多余的空格
+                result = result.replace(/\s+/g, ' ');
+                result = result.replace(/\s*\+\s*\+\s*/g, ' + ');
+                result = result.replace(/\s*\-\s*\-\s*/g, ' - ');
+                result = result.replace(/\s*\+\s*\-\s*/g, ' - ');
+                result = result.replace(/\s*\-\s*\+\s*/g, ' - ');
+                
+                // 移除前导加号
+                if (result.startsWith('+ ')) {
+                    result = result.substring(2);
+                }
+                
+                return result.trim();
+            }
+            
+            // 获取随机变量
+            getRandomVar(numVars) {
+                const index = Math.floor(Math.random() * numVars) + 1;
+                return `x_{${index}}`;
+            }
+            
+            // 渲染所有数学公式
+            renderAllMath() {
+                // 渲染问题显示
+                this.renderProblemDisplay();
+                
+                // 渲染题目中的数学公式
+                const q1Text = "1. 目标函数 \\( f(\\mathbf{x}) \\) 是否是凸函数？";
+                document.getElementById('q1Text').innerHTML = q1Text;
+                
+                // 使用KaTeX渲染所有数学公式
+                setTimeout(() => {
+                    if (window.renderMathInElement) {
+                        // 渲染问题区域
+                        renderMathInElement(document.getElementById('mathDisplay'), {
+                            delimiters: [
+                                {left: "\\[", right: "\\]", display: true},
+                                {left: "\\(", right: "\\)", display: false},
+                                {left: "$$", right: "$$", display: true}
+                            ],
+                            throwOnError: false,
+                            output: 'html'
+                        });
+                        
+                        // 渲染题目区域
+                        renderMathInElement(document.querySelector('.quiz-section'), {
+                            delimiters: [
+                                {left: "\\(", right: "\\)", display: false},
+                                {left: "\\[", right: "\\]", display: true}
+                            ],
+                            throwOnError: false,
+                            output: 'html'
+                        });
+                        
+                        // 渲染提示区域
+                        renderMathInElement(document.getElementById('hintContent'), {
+                            delimiters: [
+                                {left: "\\(", right: "\\)", display: false},
+                                {left: "\\[", right: "\\]", display: true}
+                            ],
+                            throwOnError: false,
+                            output: 'html'
+                        });
+                    }
+                }, 50);
+            }
+            
+            // 渲染问题显示（使用文字标签）
+            renderProblemDisplay() {
+                const problem = this.currentProblem;
+                if (!problem) return;
+                
+                document.getElementById('problemNumber').textContent = this.problemNumber;
+                
+                let mathHTML = `
+                    <div class="math-line">
+                        <div class="constraint-label">最小化：</div>
+                        <div class="constraint-content math-formula">
+                            \\[ f(\\mathbf{x}) = ${problem.objective.func} \\]
+                        </div>
+                    </div>
+                `;
+                
+                if (problem.constraints.length > 0) {
+                    mathHTML += `
+                        <div class="math-line">
+                            <div class="constraint-label">约束条件：</div>
+                            <div class="constraint-content"></div>
+                        </div>
+                    `;
+                    
+                    let ineqCount = 1;
+                    let eqCount = 1;
+                    
+                    problem.constraints.forEach((constraint, index) => {
+                        let label = '';
+                        if (constraint.type === 'inequality') {
+                            label = `第${ineqCount}个不等式约束：`;
+                            ineqCount++;
+                        } else {
+                            label = `第${eqCount}个等式约束：`;
+                            eqCount++;
+                        }
+                        
+                        // 使用display模式渲染约束，避免内联公式的问题
+                        mathHTML += `
+                            <div class="math-line">
+                                <div class="constraint-label">${label}</div>
+                                <div class="constraint-content math-formula">
+                                    \\[ ${constraint.func} ${constraint.comparator} ${constraint.constant} \\]
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                document.getElementById('mathDisplay').innerHTML = mathHTML;
+            }
+            
+            // 获取正确答案
+            getCorrectAnswers() {
+                const p = this.currentProblem;
+                return {
+                    q1: p.objective.isConvex ? 'yes' : 'no',
+                    q2: p.constraintsInfo.isConvexInequalities ? 'yes' : 'no',
+                    q3: p.constraintsInfo.isLinearEqualities ? 'yes' : 'no',
+                    q4: p.isConvex ? 'yes' : 'no'
+                };
+            }
+            
+            // 检查答案
+            checkAnswers() {
+                this.answered = true;
+                const correctAnswers = this.getCorrectAnswers();
+                let allCorrect = true;
+                const problem = this.currentProblem;
+                
+                // 检查每个问题
+                for (let i = 1; i <= 4; i++) {
+                    const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                    const feedback = document.getElementById(`feedback${i}`);
+                    const quizItem = document.getElementById(`quiz${i}`);
+                    const options = quizItem.querySelectorAll('.option-label');
+                    
+                    // 重置样式
+                    options.forEach(opt => {
+                        opt.classList.remove('selected', 'correct', 'incorrect');
+                    });
+                    
+                    if (!selected) {
+                        // 未选择答案
+                        feedback.textContent = '请先选择一个答案！';
+                        feedback.className = 'feedback incorrect';
+                        feedback.style.display = 'block';
+                        allCorrect = false;
+                        continue;
+                    }
+                    
+                    const isCorrect = selected.value === correctAnswers[`q${i}`];
+                    
+                    // 标记选项
+                    options.forEach(opt => {
+                        const input = opt.querySelector('input');
+                        const isThisOptionCorrect = input.value === correctAnswers[`q${i}`];
+                        
+                        if (input.checked) {
+                            opt.classList.add('selected');
+                            opt.classList.add(isCorrect ? 'correct' : 'incorrect');
+                        }
+                        
+                        if (isThisOptionCorrect && !input.checked) {
+                            opt.classList.add('correct');
+                        }
+                        
+                        input.disabled = true;
+                    });
+                    
+                    // 显示详细反馈
+                    let feedbackText = '';
+                    if (isCorrect) {
+                        feedbackText = '✓ 回答正确！';
+                    } else {
+                        // 根据问题类型提供具体反馈
+                        switch(i) {
+                            case 1:
+                                const correct1 = problem.objective.isConvex ? '是凸函数' : '不是凸函数';
+                                feedbackText = `✗ 回答错误。目标函数${correct1}`;
+                                break;
+                            case 2:
+                                if (problem.constraintsInfo.nonConvexInequalities.length > 0) {
+                                    const problemConstraints = [];
+                                    problem.constraintsInfo.inequalities.forEach((ineq, idx) => {
+                                        if (problem.constraintsInfo.nonConvexInequalities.includes(ineq.index)) {
+                                            const comparator = ineq.comparator === '\\leq' ? '≤' : '≥';
+                                            const requirement = comparator === '≤' ? '凸' : '凹';
+                                            const isLinearFunc = ineq.isLinear ? '（这是线性函数）' : '';
+                                            problemConstraints.push(`第${ineq.index}个不等式约束${isLinearFunc}是${comparator}0，需要${requirement}函数`);
+                                        }
+                                    });
+                                    
+                                    feedbackText = `✗ 回答错误。以下约束不满足要求：<br>${problemConstraints.join('；<br>')}`;
+                                } else {
+                                    feedbackText = '✗ 回答错误。所有不等式约束都满足凸性/凹性要求';
+                                }
+                                break;
+                            case 3:
+                                if (problem.constraintsInfo.nonLinearEqualities.length > 0) {
+                                    const constraints = problem.constraintsInfo.nonLinearEqualities
+                                        .map(idx => `第${idx}个等式约束`)
+                                        .join('、');
+                                    feedbackText = `✗ 回答错误。以下等式约束不是线性函数：${constraints}`;
+                                } else {
+                                    feedbackText = '✗ 回答错误。所有等式约束都是线性函数';
+                                }
+                                break;
+                            case 4:
+                                const correct4 = problem.isConvex ? '是凸规划' : '不是凸规划';
+                                feedbackText = `✗ 回答错误。这个优化问题${correct4}`;
+                                break;
+                        }
+                    }
+                    
+                    feedback.innerHTML = feedbackText;
+                    feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+                    feedback.style.display = 'block';
+                    
+                    if (!isCorrect) {
+                        allCorrect = false;
+                    }
+                }
+                
+                // 显示结果
+                this.showResult(allCorrect);
+                
+                // 如果全部正确，触发庆祝效果
+                if (allCorrect) {
+                    this.score += 10;
+                    document.getElementById('score').textContent = this.score;
+                    this.celebrateSuccess();
+                    
+                    // 2秒后自动进入下一题
+                    setTimeout(() => {
+                        this.nextProblem();
+                    }, 2000);
+                }
+            }
+            
+            // 显示结果
+            showResult(allCorrect) {
+                const resultSection = document.getElementById('resultSection');
+                const resultTitle = document.getElementById('resultTitle');
+                const successMessage = document.getElementById('successMessage');
+                const celebration = document.getElementById('celebration');
+                const resultDetails = document.getElementById('resultDetails');
+                const autoNext = document.getElementById('autoNext');
+                
+                resultSection.style.display = 'block';
+                
+                if (allCorrect) {
+                    resultSection.className = 'result-section result-correct';
+                    resultTitle.textContent = '🎉 恭喜！';
+                    successMessage.textContent = '你答对了！';
+                    successMessage.style.display = 'block';
+                    celebration.innerHTML = '✨🎊✨';
+                    celebration.style.display = 'block';
+                    resultDetails.textContent = `获得10分！当前总分: ${this.score}`;
+                    autoNext.textContent = '自动跳转下一题...';
+                } else {
+                    resultSection.className = 'result-section result-incorrect';
+                    resultTitle.textContent = '❌ 回答错误';
+                    successMessage.style.display = 'none';
+                    celebration.style.display = 'none';
+                    resultDetails.textContent = '请学习正确答案，然后尝试新题目';
+                    autoNext.textContent = '';
+                }
+            }
+            
+            // 庆祝成功（烟花效果）
+            celebrateSuccess() {
+                // 多种烟花效果
+                const duration = 2000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+                
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+                
+                const interval = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+                    
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+                    
+                    const particleCount = 50 * (timeLeft / duration);
+                    
+                    // 左侧发射
+                    confetti({
+                        ...defaults,
+                        particleCount,
+                        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+                    });
+                    
+                    // 右侧发射
+                    confetti({
+                        ...defaults,
+                        particleCount,
+                        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+                    });
+                }, 250);
+                
+                // 中心大爆炸
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 150,
+                        spread: 100,
+                        origin: { y: 0.6 }
+                    });
+                }, 100);
+            }
+            
+            // 下一题
+            nextProblem() {
+                this.problemNumber++;
+                this.answered = false;
+                this.generateProblem();
+                this.resetUI();
+                this.renderAllMath();
+            }
+            
+            // 重置UI
+            resetUI() {
+                // 重置单选按钮
+                document.querySelectorAll('input[type="radio"]').forEach(input => {
+                    input.checked = false;
+                    input.disabled = false;
+                });
+                
+                // 重置选项样式
+                document.querySelectorAll('.option-label').forEach(label => {
+                    label.classList.remove('selected', 'correct', 'incorrect');
+                });
+                
+                // 隐藏反馈
+                for (let i = 1; i <= 4; i++) {
+                    const feedback = document.getElementById(`feedback${i}`);
+                    feedback.style.display = 'none';
+                }
+                
+                // 隐藏结果区域
+                document.getElementById('resultSection').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'none';
+                document.getElementById('celebration').style.display = 'none';
+                document.getElementById('autoNext').textContent = '';
+            }
+            
+            // 设置事件监听器
+            setupEventListeners() {
+                // 生成新问题
+                document.getElementById('newProblemBtn').addEventListener('click', () => {
+                    this.nextProblem();
+                });
+                
+                // 检查答案
+                document.getElementById('checkBtn').addEventListener('click', () => {
+                    this.checkAnswers();
+                });
+                
+                // 选项点击
+                document.querySelectorAll('.option-label').forEach(label => {
+                    label.addEventListener('click', (e) => {
+                        if (this.answered) return;
+                        
+                        const input = label.querySelector('input');
+                        const name = input.name;
+                        
+                        // 清除同组其他选项
+                        document.querySelectorAll(`input[name="${name}"]`).forEach(inp => {
+                            inp.checked = false;
+                            inp.closest('.option-label').classList.remove('selected');
+                        });
+                        
+                        // 选中当前
+                        input.checked = true;
+                        label.classList.add('selected');
+                    });
+                });
+                
+                // 键盘快捷键
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.checkAnswers();
+                    } else if (e.key === 'n' || e.key === 'N') {
+                        e.preventDefault();
+                        this.nextProblem();
+                    }
+                });
+            }
+        }
+        
+        // 初始化游戏
+        window.addEventListener('DOMContentLoaded', () => {
+            const game = new ConvexOptimizationGame();
+            window.game = game; // 方便调试
+        });
+    </script>
+</body>
+</html>
